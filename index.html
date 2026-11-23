@@ -145,7 +145,7 @@
       <label>Hafta tarihi</label>
       <input id="weekDate" type="date">
       <h2 style="margin-top:20px">Katılımcılar ve Sonuçlar</h2>
-      <div class="muted">Katılan oyuncuları seç ve oyun/yıldız sayılarını gir.</div>
+      <div class="muted">Oyun sayıları yalnızca Gerçek Oyun gecesinden otomatik aktarılır; istersen değiştirebilir, yıldız alanına kaybedilen oyun sayısını girebilirsin. Deneme Modu verileri hiçbir zaman aktarılmaz.</div>
       <div id="playerInputs"></div>
       <br>
       <div class="actions">
@@ -226,7 +226,7 @@
         players = data[0].docs.map(doc=>({...doc.data(),id:doc.id}));
         weeks = data[1].docs.map(doc=>({id:doc.id,...doc.data()})).sort((a,b)=>(a.weekNumber||0)-(b.weekNumber||0));
         render();
-        renderPlayerInputs(editingWeekId ? (weeks.find(w=>w.id===editingWeekId)?.results || {}) : {});
+        renderPlayerInputs(editingWeekId ? (weeks.find(w=>w.id===editingWeekId)?.results || {}) : (isAdmin() ? getRealNightResults() : {}));
         renderDrawPlayers();
         renderDrawHistory();
         renderLastDrawResult();
@@ -291,6 +291,16 @@
           </table></div>
         </details>`;
       }).join("") || "Henüz haftalık sonuç yok.";
+    }
+
+    function getRealNightResults(){
+      try{
+        const saved=JSON.parse(localStorage.getItem("okeyLeagueGameNight_v1")||"null");
+        const games=saved&&saved.drawStats&&saved.drawStats.games?saved.drawStats.games:{};
+        const results={};
+        players.forEach(p=>{const count=Number(games[p.id])||0;if(count>0)results[p.id]={games:count,stars:0};});
+        return results;
+      }catch(e){console.warn("Gerçek oyun gecesi istatistikleri okunamadı:",e);return {};}
     }
 
     function renderPlayerInputs(results={}){
