@@ -39,6 +39,38 @@
     #cancelEditButton{display:none}
     details{border-bottom:1px solid #35445b;padding:10px 0}
     summary{cursor:pointer;font-weight:bold;color:#f1f5f9}
+
+    /* Oyun gecesi eşleştirme modülü */
+    .draw-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+    .draw-toolbar button{flex:1;min-width:130px}
+    .draw-player-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0}
+    .draw-player{display:flex;align-items:center;gap:9px;background:#263750;border:1px solid #40536d;border-radius:9px;padding:10px;min-width:0}
+    .draw-player input{width:18px;height:18px;margin:0;accent-color:#d6a84b;flex:none}
+    .draw-player span{overflow-wrap:anywhere}
+    .draw-all{background:#354760;color:#fff}
+    .draw-action{width:100%;margin-top:8px}
+    .draw-round{margin-top:16px}
+    .draw-tables{display:grid;grid-template-columns:1fr;gap:12px;margin-top:12px}
+    .draw-table{background:#142238;border:1px solid #52627a;border-radius:12px;padding:13px}
+    .draw-table h3{margin:0 0 12px;color:#e8bd61;font-size:16px;text-align:center;letter-spacing:1px}
+    .draw-seats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+    .draw-seat{background:#fff;color:#172033;border-radius:11px;padding:11px 8px;text-align:center;min-height:104px;box-shadow:inset 0 2px 4px #ffffff,0 4px 9px #0005;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+    .draw-seat.reel{animation:reelFlash .16s linear infinite}
+    .draw-seat .stone-number{font-size:29px;line-height:1;font-weight:900}
+    .draw-seat .stone-name{font-size:13px;font-weight:bold;overflow-wrap:anywhere}
+    .stone-dot{width:18px;height:18px;border-radius:50%;display:block;position:relative}
+    .stone-dot:after{content:"";position:absolute;inset:-4px;border:1px solid currentColor;border-radius:50%;opacity:.7}
+    .stone-red{background:#e53935;color:#e53935}
+    .stone-black{background:#20242b;color:#20242b}
+    .stone-blue{background:#1976d2;color:#1976d2}
+    .stone-yellow{background:#f5c400;color:#d5a900}
+    .draw-waiting{margin-top:12px;padding:10px;background:#263750;border-radius:9px;color:#dbe5f2;font-size:13px}
+    .draw-note{color:#aab6c8;font-size:12px;line-height:1.5;margin-top:8px}
+    .draw-history{margin-top:14px}
+    .draw-history-item{padding:9px 0;border-bottom:1px solid #35445b;font-size:12px;color:#cbd5e1}
+    @keyframes reelFlash{0%{transform:translateY(-2px)}50%{transform:translateY(2px)}100%{transform:translateY(-2px)}}
+    @media(min-width:600px){.draw-tables{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
     @media(min-width:600px){.stats{grid-template-columns:repeat(4,1fr)}}
   </style>
 </head>
@@ -62,6 +94,22 @@
     <section class="card">
       <h2>📊 Genel İstatistikler</h2>
       <div id="statistics" class="stats"></div>
+    </section>
+
+
+    <section class="card" id="gameNightPanel">
+      <h2>🎲 Oyun Gecesi • Eşleşme ve Masa Kurası</h2>
+      <div class="muted">Bu bölüm haftalık lig sonuçlarından bağımsız çalışır. Her oyun öncesi o oyuna katılacak isimleri seç.</div>
+      <div class="draw-toolbar">
+        <button type="button" class="draw-all" id="drawSelectAll" onclick="toggleDrawAll()">☑ Tümünü Seç</button>
+        <button type="button" class="secondary" onclick="startNewGameNight()">Yeni Oyun Gecesi</button>
+      </div>
+      <div id="drawPlayerList" class="draw-player-list"><div class="muted">Oyuncular yükleniyor...</div></div>
+      <div class="draw-note">4–7 oyuncuda bir masa kurulur, 8 oyuncuda iki masa aynı anda oynar. 4 kişi dışındaki katılımcılar bekler; sonraki oyunlarda oyun sayısı, rakip çeşitliliği ve oturma taşları dengelenmeye çalışılır.</div>
+      <button type="button" class="draw-action" id="drawButton" onclick="drawNextRound()">🎰 Eşleşmeyi ve Oturma Düzenini Belirle</button>
+      <div id="drawStatus" class="draw-note" aria-live="polite"></div>
+      <div id="drawResult" class="draw-round"></div>
+      <div id="drawHistory" class="draw-history"></div>
     </section>
 
     <section class="card">
@@ -172,10 +220,10 @@
     async function refreshData(){
       try{
         const data = await Promise.all([db.collection("players").get(),db.collection("weeks").get()]);
-        players = data[0].docs.map(doc=>({id:doc.id,...doc.data()}));
+        players = data[0].docs.map(doc=>({...doc.data(),id:doc.id}));
         weeks = data[1].docs.map(doc=>({id:doc.id,...doc.data()})).sort((a,b)=>(a.weekNumber||0)-(b.weekNumber||0));
         render();
-        renderPlayerInputs(editingWeekId ? (weeks.find(w=>w.id===editingWeekId)?.results || {}) : {});
+        renderPlayerInputs(editingWeekId ? (weeks.find(w=>w.id===editingWeekId)?.results || {}) : {});\n        renderDrawPlayers();
       }catch(error){
         document.getElementById("ranking").innerHTML = '<tr><td colspan="5">Veriler yüklenemedi. Firebase bağlantısını kontrol et.</td></tr>';
         console.error(error);
@@ -364,6 +412,214 @@
       }
     }
 
+
+    // Oyun gecesi verileri yalnızca bu cihazdaki tarayıcıda tutulur; lig verilerine yazılmaz.
+    let drawRoundNumber = 0;
+    let drawStats = {games:{}, pairs:{}, seats:{}, history:[]};
+    let drawBusy = false;
+    const stoneColors = ["stone-red","stone-black","stone-blue","stone-yellow"];
+    const stoneNumbers = [13,12,11,10];
+
+    function drawStorageKey(){ return "okeyLeagueGameNight_v1"; }
+    function saveDrawState(){
+      try{ localStorage.setItem(drawStorageKey(),JSON.stringify({drawRoundNumber,drawStats})); }catch(e){}
+    }
+    function loadDrawState(){
+      try{
+        const saved = JSON.parse(localStorage.getItem(drawStorageKey())||"null");
+        if(saved && saved.drawStats){ drawRoundNumber=Number(saved.drawRoundNumber)||0; drawStats=saved.drawStats; }
+      }catch(e){}
+    }
+    function startNewGameNight(){
+      if(drawBusy) return;
+      if(drawRoundNumber && !confirm("Mevcut oyun gecesinin eşleşme geçmişi sıfırlanacak. Yeni gece başlatılsın mı?")) return;
+      drawRoundNumber=0;
+      drawStats={games:{},pairs:{},seats:{},history:[]};
+      saveDrawState();
+      document.getElementById("drawResult").innerHTML="";
+      document.getElementById("drawHistory").innerHTML="";
+      document.getElementById("drawStatus").textContent="Yeni oyun gecesi hazır. İlk oyun için katılımcıları seç.";
+      renderDrawPlayers();
+    }
+    function renderDrawPlayers(){
+      const box=document.getElementById("drawPlayerList");
+      if(!box) return;
+      if(!players.length){ box.innerHTML='<div class="muted">Henüz oyuncu kaydı bulunamadı.</div>'; return; }
+      const selected=new Set(Array.from(box.querySelectorAll('input:checked')).map(x=>x.value));
+      box.innerHTML="";
+      players.forEach(p=>{
+        const label=document.createElement("label");
+        label.className="draw-player";
+        const input=document.createElement("input");
+        input.type="checkbox"; input.className="draw-participant"; input.value=p.id;
+        input.checked=selected.size ? selected.has(p.id) : true;
+        const name=document.createElement("span"); name.textContent=p.name||p.id;
+        label.append(input,name); box.appendChild(label);
+      });
+      updateDrawAllLabel();
+    }
+    function selectedDrawPlayers(){
+      return Array.from(document.querySelectorAll(".draw-participant:checked")).map(el=>players.find(p=>p.id===el.value)).filter(Boolean);
+    }
+    function toggleDrawAll(){
+      const boxes=Array.from(document.querySelectorAll(".draw-participant"));
+      if(!boxes.length) return;
+      const all=boxes.every(x=>x.checked);
+      boxes.forEach(x=>x.checked=!all);
+      updateDrawAllLabel();
+    }
+    function updateDrawAllLabel(){
+      const boxes=Array.from(document.querySelectorAll(".draw-participant"));
+      const button=document.getElementById("drawSelectAll");
+      if(button) button.textContent=boxes.length && boxes.every(x=>x.checked) ? "☐ Tümünün Seçimini Kaldır" : "☑ Tümünü Seç";
+    }
+    function pairKey(a,b){ return [a,b].sort().join("::"); }
+    function permutations(arr){
+      if(arr.length<=1) return [arr.slice()];
+      const out=[];
+      arr.forEach((v,i)=>permutations(arr.filter((_,j)=>j!==i)).forEach(rest=>out.push([v,...rest])));
+      return out;
+    }
+    function combinations(arr,k,start=0,prefix=[],out=[]){
+      if(prefix.length===k){out.push(prefix.slice());return out;}
+      for(let i=start;i<=arr.length-(k-prefix.length);i++){prefix.push(arr[i]);combinations(arr,k,i+1,prefix,out);prefix.pop();}
+      return out;
+    }
+    function currentCount(obj,key){return Number(obj[key])||0;}
+    function lineupCost(lineup){
+      let cost=0;
+      const ids=lineup.map(p=>p.id);
+      ids.forEach(id=>cost+=currentCount(drawStats.games,id)*7);
+      for(let i=0;i<ids.length;i++) for(let j=i+1;j<ids.length;j++){
+        cost+=currentCount(drawStats.pairs,pairKey(ids[i],ids[j]))*12;
+      }
+      lineup.forEach((p,i)=>{
+        cost+=currentCount(drawStats.seats,p.id+"|"+stoneNumbers[i])*2.5;
+      });
+      return cost;
+    }
+    function chooseBestTable(pool){
+      let best=null,bestCost=Infinity;
+      combinations(pool,4).forEach(group=>{
+        permutations(group).forEach(lineup=>{
+          const cost=lineupCost(lineup)+Math.random()*0.01;
+          if(cost<bestCost){bestCost=cost;best=lineup;}
+        });
+      });
+      return best;
+    }
+    function chooseBestTwoTables(pool){
+      let best=null,bestCost=Infinity;
+      combinations(pool,4).forEach(first=>{
+        const rest=pool.filter(p=>!first.some(x=>x.id===p.id));
+        // Aynı bölünmeyi iki kez değerlendirmemek için ilk oyuncuyu A masasında sabitle.
+        if(!first.some(p=>p.id===pool[0].id)) return;
+        permutations(first).forEach(a=>{
+          permutations(rest).forEach(b=>{
+            let cost=lineupCost(a)+lineupCost(b);
+            const crossA=new Set(a.map(p=>p.id));
+            const crossB=new Set(b.map(p=>p.id));
+            // Masalar arasında aynı oyuncuların tekrar tekrar birlikte kalmasını azalt.
+            drawStats.history.slice(-5).forEach(h=>{
+              (h.tables||[]).forEach(t=>{
+                const old=new Set(t.ids||[]);
+                let overlap=0; crossA.forEach(id=>{if(old.has(id))overlap++;});
+                if(overlap===4) cost+=10;
+              });
+            });
+            const adjusted=cost+Math.random()*0.01;
+            if(adjusted<bestCost){bestCost=adjusted;best=[a,b];}
+          });
+        });
+      });
+      return best;
+    }
+    function updateDrawStats(tables,selectedIds,waitingIds){
+      const played=new Set(tables.flat().map(p=>p.id));
+      selectedIds.forEach(id=>{ if(drawStats.games[id]===undefined) drawStats.games[id]=0; });
+      played.forEach(id=>drawStats.games[id]=(drawStats.games[id]||0)+1);
+      tables.forEach(lineup=>{
+        for(let i=0;i<lineup.length;i++){
+          const id=lineup[i].id, seat=stoneNumbers[i];
+          const sk=id+"|"+seat;
+          drawStats.seats[sk]=(drawStats.seats[sk]||0)+1;
+          for(let j=i+1;j<lineup.length;j++){
+            const pk=pairKey(id,lineup[j].id);
+            drawStats.pairs[pk]=(drawStats.pairs[pk]||0)+1;
+          }
+        }
+      });
+      drawStats.history.push({round:drawRoundNumber+1,tables:tables.map(t=>({ids:t.map(p=>p.id)})),waiting:waitingIds.slice()});
+      drawRoundNumber++;
+      saveDrawState();
+    }
+    function renderDrawHistory(){
+      const box=document.getElementById("drawHistory");
+      if(!drawStats.history.length){box.innerHTML="";return;}
+      box.innerHTML="<strong>Bu gecenin oyun geçmişi</strong>"+drawStats.history.slice().reverse().map(h=>{
+        const tables=h.tables.map((t,i)=>" "+String.fromCharCode(65+i)+": "+t.ids.map(id=>players.find(p=>p.id===id)?.name||id).join(", ")).join(" | ");
+        const waiting=h.waiting.length ? " • Bekleyen: "+h.waiting.map(id=>players.find(p=>p.id===id)?.name||id).join(", ") : "";
+        return '<div class="draw-history-item"><b>'+h.round+". Oyun</b> — "+tables+waiting+"</div>";
+      }).join("");
+    }
+    function renderDrawResult(tables,waiting){
+      const names=tables.map((lineup,i)=>{
+        const seats=lineup.map((p,j)=>'<div class="draw-seat"><span class="stone-number">'+stoneNumbers[j]+'</span><span class="stone-dot '+stoneColors[(drawRoundNumber+i+j)%stoneColors.length]+'"></span><span class="stone-name">'+escapeDrawText(p.name||p.id)+'</span></div>').join("");
+        return '<div class="draw-table"><h3>'+String.fromCharCode(65+i)+' MASASI</h3><div class="draw-seats">'+seats+'</div></div>';
+      }).join("");
+      const waitingHtml=waiting.length?'<div class="draw-waiting"><b>Bekleyenler:</b> '+waiting.map(id=>escapeDrawText(players.find(p=>p.id===id)?.name||id)).join(", ")+'</div>':'';
+      document.getElementById("drawResult").innerHTML='<div><b>'+drawRoundNumber+'. Oyun • Kura sonucu</b></div><div class="draw-tables">'+names+'</div>'+waitingHtml;
+    }
+    function escapeDrawText(value){
+      return String(value).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    }
+    async function drawNextRound(){
+      if(drawBusy) return;
+      const chosen=selectedDrawPlayers();
+      if(chosen.length<4){alert("Bir masa kurmak için en az 4 oyuncu seçmelisin.");return;}
+      if(chosen.length>8){alert("Bir oyun için en fazla 8 oyuncu seçebilirsin.");return;}
+      drawBusy=true;
+      const button=document.getElementById("drawButton");
+      button.disabled=true;
+      const status=document.getElementById("drawStatus");
+      status.textContent="Kura hazırlanıyor...";
+      const pool=chosen.slice();
+      let tables;
+      if(pool.length===8) tables=chooseBestTwoTables(pool);
+      else tables=[chooseBestTable(pool)];
+      if(!tables || tables.some(t=>!t)){status.textContent="Eşleşme oluşturulamadı.";button.disabled=false;drawBusy=false;return;}
+      const playedIds=new Set(tables.flat().map(p=>p.id));
+      const waiting=pool.filter(p=>!playedIds.has(p.id)).map(p=>p.id);
+      // Sonuç animasyondan önce sabitlenir; animasyon kura kararını değiştirmez.
+      const fixedTables=tables.map(t=>t.slice());
+      status.textContent="İsimler çekiliyor...";
+      renderDrawResult(fixedTables,waiting);
+      const seats=Array.from(document.querySelectorAll("#drawResult .draw-seat"));
+      seats.forEach((seat,index)=>{
+        const name=seat.querySelector(".stone-name");
+        const target=name.textContent;
+        seat.classList.add("reel");
+        let tick=0;
+        const timer=setInterval(()=>{
+          const p=pool[Math.floor(Math.random()*pool.length)];
+          name.textContent=p.name||p.id;
+          tick++;
+          if(tick>7+index*2){
+            clearInterval(timer);
+            name.textContent=target;
+            seat.classList.remove("reel");
+          }
+        },65+index*8);
+      });
+      await new Promise(resolve=>setTimeout(resolve,3700));
+      updateDrawStats(fixedTables,chosen.map(p=>p.id),waiting);
+      renderDrawResult(fixedTables,waiting);
+      renderDrawHistory();
+      status.textContent="Kura tamamlandı. Sonraki oyun için katılımcıları yeniden seçebilirsin.";
+      button.disabled=false;
+      drawBusy=false;
+    }
+
     async function sharePage(){
       const url = location.href;
       if(navigator.share){
@@ -373,7 +629,7 @@
       }
     }
 
-    refreshData();
+    loadDrawState();\n    refreshData();
   </script>
 </body>
 </html>
