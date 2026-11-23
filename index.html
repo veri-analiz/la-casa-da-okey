@@ -57,7 +57,7 @@
     .draw-seat{background:#fff;color:#172033;border-radius:11px;padding:13px 8px;text-align:center;min-height:124px;box-shadow:inset 0 2px 4px #ffffff,0 4px 9px #0005;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
     .draw-seat.reel{animation:reelFlash .32s ease-in-out infinite;box-shadow:inset 0 0 0 2px #e8bd61,0 5px 14px #0007}
     .draw-seat .stone-number{font-size:34px;line-height:1;font-weight:950}
-    .draw-seat .stone-name{font-size:clamp(19px,5vw,25px);line-height:1.12;font-weight:950;letter-spacing:.2px;overflow-wrap:anywhere;text-shadow:0 1px 0 #fff}
+    .draw-seat .stone-name{font-size:clamp(22px,6vw,30px);line-height:1.08;font-weight:1000;letter-spacing:.45px;text-transform:uppercase;overflow-wrap:anywhere;text-shadow:0 1px 0 #fff}
     .stone-dot{width:18px;height:18px;border-radius:50%;display:block;position:relative}
     .stone-dot:after{content:"";position:absolute;inset:-4px;border:1px solid currentColor;border-radius:50%;opacity:.7}
     .stone-red{background:#e53935;color:#e53935}
@@ -486,7 +486,7 @@
         const target=fixedTables[item.table][item.seatIndex].name||fixedTables[item.table][item.seatIndex].id;
         status.textContent=String.fromCharCode(65+item.table)+" masası • "+stoneNumbers[item.seatIndex]+" taşı çekiliyor...";
         item.seat.classList.add("reel");
-        const started=Date.now(),duration=3800;
+        const started=Date.now(),duration=2800;
         await new Promise(resolve=>{
           const timer=setInterval(()=>{
             const elapsed=Date.now()-started;
@@ -500,7 +500,7 @@
         });
         if(index<revealOrder.length-1){
           status.textContent=String.fromCharCode(65+item.table)+" masası • "+target+" yerleşti. Sıradaki isim hazırlanıyor...";
-          await new Promise(resolve=>setTimeout(resolve,1500));
+          await new Promise(resolve=>setTimeout(resolve,1100));
         }
       }
       updateDrawStats(fixedTables,chosen.map(p=>p.id),waiting);renderDrawResult(fixedTables,waiting,drawRoundNumber);renderDrawHistory();status.textContent=(drawMode==="test"?"Deneme":"Gerçek oyun")+" kurası tamamlandı. Sonraki oyun için katılımcıları yeniden seçebilirsin.";button.disabled=false;drawBusy=false;
