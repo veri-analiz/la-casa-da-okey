@@ -485,6 +485,12 @@
         const item=revealOrder[index];
         const name=item.seat.querySelector(".stone-name");
         const target=fixedTables[item.table][item.seatIndex].name||fixedTables[item.table][item.seatIndex].id;
+        if(fixedTables.length===2 && index===revealOrder.length-1){
+          name.textContent=target;
+          item.seat.classList.add("revealed");
+          status.textContent="B masasında son koltuk kalan oyuncuya ayrıldı.";
+          continue;
+        }
         status.textContent=String.fromCharCode(65+item.table)+" masası • "+stoneNumbers[item.seatIndex]+" taşı çekiliyor...";
         item.seat.classList.add("reel");
         const started=Date.now(),duration=1500;
