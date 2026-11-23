@@ -226,6 +226,8 @@
         render();
         renderPlayerInputs(editingWeekId ? (weeks.find(w=>w.id===editingWeekId)?.results || {}) : {});
         renderDrawPlayers();
+        renderDrawHistory();
+        renderLastDrawResult();
       }catch(error){
         document.getElementById("ranking").innerHTML = '<tr><td colspan="5">Veriler yüklenemedi. Firebase bağlantısını kontrol et.</td></tr>';
         console.error(error);
@@ -481,6 +483,7 @@
       }
     }
 
+    try{drawMode=localStorage.getItem("okeyLeagueGameNight_mode")||"test";}catch(e){drawMode="test";}
     loadDrawState();
     refreshData();
   </script>
