@@ -471,7 +471,40 @@
     function permutations(arr){if(arr.length<=1)return[arr.slice()];const out=[];arr.forEach((v,i)=>permutations(arr.filter((_,j)=>j!==i)).forEach(rest=>out.push([v,...rest])));return out;}
     function combinations(arr,k,start=0,prefix=[],out=[]){if(prefix.length===k){out.push(prefix.slice());return out;}for(let i=start;i<=arr.length-(k-prefix.length);i++){prefix.push(arr[i]);combinations(arr,k,i+1,prefix,out);prefix.pop();}return out;}
     function currentCount(obj,key){return Number(obj[key])||0;}
-    function lineupCost(lineup){let cost=0;const ids=lineup.map(p=>p.id);ids.forEach(id=>cost+=currentCount(drawStats.games,id)*7);for(let i=0;i<ids.length;i++)for(let j=i+1;j<ids.length;j++)cost+=currentCount(drawStats.pairs,pairKey(ids[i],ids[j]))*12;lineup.forEach((p,i)=>cost+=currentCount(drawStats.seats,p.id+"|"+stoneNumbers[i])*2.5);return cost;}
+    function relativeSeatRepeatCount(idA,idB,offset){
+      let count=0;
+      (drawStats.history||[]).forEach(round=>{
+        (round.tables||[]).forEach(table=>{
+          const ids=table.ids||[];
+          const indexA=ids.indexOf(idA),indexB=ids.indexOf(idB);
+          if(indexA<0||indexB<0||ids.length!==4)return;
+          if((indexB-indexA+4)%4===offset)count++;
+        });
+      });
+      return count;
+    }
+    function relativeSeatCost(lineup){
+      let cost=0;
+      for(let i=0;i<lineup.length;i++){
+        for(let j=i+1;j<lineup.length;j++){
+          const idA=lineup[i].id,idB=lineup[j].id;
+          const aFirst=String(idA)<String(idB);
+          const firstId=aFirst?idA:idB,secondId=aFirst?idB:idA;
+          const offset=aFirst?(j-i+4)%4:(i-j+4)%4;
+          const repeats=relativeSeatRepeatCount(firstId,secondId,offset);
+          cost+=repeats*14;
+          const latest=(drawStats.history||[]).slice(-1)[0];
+          const repeatedLast=(latest?.tables||[]).some(table=>{
+            const ids=table.ids||[];
+            const ia=ids.indexOf(firstId),ib=ids.indexOf(secondId);
+            return ia>=0&&ib>=0&&ids.length===4&&(ib-ia+4)%4===offset;
+          });
+          if(repeatedLast)cost+=18;
+        }
+      }
+      return cost;
+    }
+    function lineupCost(lineup){let cost=0;const ids=lineup.map(p=>p.id);ids.forEach(id=>cost+=currentCount(drawStats.games,id)*7);for(let i=0;i<ids.length;i++)for(let j=i+1;j<ids.length;j++)cost+=currentCount(drawStats.pairs,pairKey(ids[i],ids[j]))*12;lineup.forEach((p,i)=>cost+=currentCount(drawStats.seats,p.id+"|"+stoneNumbers[i])*2.5);cost+=relativeSeatCost(lineup);return cost;}
     function chooseBestTable(pool){let best=null,bestCost=Infinity;combinations(pool,4).forEach(group=>permutations(group).forEach(lineup=>{const cost=lineupCost(lineup)+Math.random()*0.01;if(cost<bestCost){bestCost=cost;best=lineup;}}));return best;}
     function chooseBestTwoTables(pool){let best=null,bestCost=Infinity;combinations(pool,4).forEach(first=>{const rest=pool.filter(p=>!first.some(x=>x.id===p.id));if(!first.some(p=>p.id===pool[0].id))return;permutations(first).forEach(a=>permutations(rest).forEach(b=>{let cost=lineupCost(a)+lineupCost(b);drawStats.history.slice(-5).forEach(h=>(h.tables||[]).forEach(t=>{const old=new Set(t.ids||[]);if(a.filter(p=>old.has(p.id)).length===4)cost+=10;}));const adjusted=cost+Math.random()*0.01;if(adjusted<bestCost){bestCost=adjusted;best=[a,b];}}));});return best;}
     function updateDrawStats(tables,selectedIds,waitingIds){const played=new Set(tables.flat().map(p=>p.id));selectedIds.forEach(id=>{if(drawStats.games[id]===undefined)drawStats.games[id]=0;});played.forEach(id=>drawStats.games[id]=(drawStats.games[id]||0)+1);tables.forEach(lineup=>{for(let i=0;i<lineup.length;i++){const id=lineup[i].id,sk=id+"|"+stoneNumbers[i];drawStats.seats[sk]=(drawStats.seats[sk]||0)+1;for(let j=i+1;j<lineup.length;j++){const pk=pairKey(id,lineup[j].id);drawStats.pairs[pk]=(drawStats.pairs[pk]||0)+1;}}});drawStats.history.push({round:drawRoundNumber+1,tables:tables.map(t=>({ids:t.map(p=>p.id)})),waiting:waitingIds.slice()});drawRoundNumber++;saveDrawState();renderDrawStats();}
