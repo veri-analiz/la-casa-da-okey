@@ -107,9 +107,9 @@
       </div>
       <div id="drawPlayerList" class="draw-player-list"><div class="muted">Oyuncular yükleniyor...</div></div>
       <div class="draw-note">4–7 oyuncuda bir masa kurulur, 8 oyuncuda iki masa aynı anda oynar. 4 kişi dışındaki katılımcılar bekler; sonraki oyunlarda oyun sayısı, rakip çeşitliliği ve oturma taşları dengelenmeye çalışılır.</div>
+      <div id="drawResult" class="draw-round"></div>
       <button type="button" class="draw-action" id="drawButton" onclick="drawNextRound()">🎰 Eşleşmeyi ve Oturma Düzenini Belirle</button>
       <div id="drawStatus" class="draw-note" aria-live="polite"></div>
-      <div id="drawResult" class="draw-round"></div>
       <div id="drawHistory" class="draw-history"></div>
     </section>
 
@@ -464,13 +464,13 @@
     function updateDrawStats(tables,selectedIds,waitingIds){const played=new Set(tables.flat().map(p=>p.id));selectedIds.forEach(id=>{if(drawStats.games[id]===undefined)drawStats.games[id]=0;});played.forEach(id=>drawStats.games[id]=(drawStats.games[id]||0)+1);tables.forEach(lineup=>{for(let i=0;i<lineup.length;i++){const id=lineup[i].id,sk=id+"|"+stoneNumbers[i];drawStats.seats[sk]=(drawStats.seats[sk]||0)+1;for(let j=i+1;j<lineup.length;j++){const pk=pairKey(id,lineup[j].id);drawStats.pairs[pk]=(drawStats.pairs[pk]||0)+1;}}});drawStats.history.push({round:drawRoundNumber+1,tables:tables.map(t=>({ids:t.map(p=>p.id)})),waiting:waitingIds.slice()});drawRoundNumber++;saveDrawState();}
     function escapeDrawText(value){return String(value).replace(/[&<>"\']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","\'":"&#39;"}[c]));}
     function renderDrawHistory(){const box=document.getElementById("drawHistory");if(!box)return;if(!drawStats.history.length){box.innerHTML="";return;}box.innerHTML="<strong>Bu "+(drawMode==="test"?"deneme":"gerçek oyun")+" gecesinin geçmişi</strong>"+drawStats.history.slice().reverse().map(h=>{const tables=h.tables.map((t,i)=>" "+String.fromCharCode(65+i)+": "+t.ids.map(id=>escapeDrawText(players.find(p=>p.id===id)?.name||id)).join(", ")).join(" | ");const waiting=h.waiting.length?" • Bekleyen: "+h.waiting.map(id=>escapeDrawText(players.find(p=>p.id===id)?.name||id)).join(", "):"";return '<div class="draw-history-item"><b>'+h.round+". Oyun</b> — "+tables+waiting+"</div>";}).join("");}
-    function renderDrawResult(tables,waiting,round=drawRoundNumber){const names=tables.map((lineup,i)=>{const seats=lineup.map((p,j)=>'<div class="draw-seat"><span class="stone-number">'+stoneNumbers[j]+'</span><span class="stone-dot '+stoneColors[(round+i+j)%stoneColors.length]+'"></span><span class="stone-name">'+escapeDrawText(p.name||p.id)+'</span></div>').join("");return '<div class="draw-table"><h3>'+String.fromCharCode(65+i)+' MASASI</h3><div class="draw-seats">'+seats+'</div></div>';}).join("");const waitingHtml=waiting.length?'<div class="draw-waiting"><b>Bekleyenler:</b> '+waiting.map(id=>escapeDrawText(players.find(p=>p.id===id)?.name||id)).join(", ")+'</div>':"";document.getElementById("drawResult").innerHTML='<div><b>'+round+'. Oyun • Kura sonucu</b></div><div class="draw-tables">'+names+'</div>'+waitingHtml;}
+    function renderDrawResult(tables,waiting,round=drawRoundNumber,hideNames=false){const names=tables.map((lineup,i)=>{const seats=lineup.map((p,j)=>'<div class="draw-seat"><span class="stone-number">'+stoneNumbers[j]+'</span><span class="stone-dot '+stoneColors[(round+i+j)%stoneColors.length]+'"></span><span class="stone-name">'+(hideNames?'':escapeDrawText(p.name||p.id))+'</span></div>').join("");return '<div class="draw-table"><h3>'+String.fromCharCode(65+i)+' MASASI</h3><div class="draw-seats">'+seats+'</div></div>';}).join("");const waitingHtml=waiting.length?'<div class="draw-waiting"><b>Bekleyenler:</b> '+waiting.map(id=>escapeDrawText(players.find(p=>p.id===id)?.name||id)).join(", ")+'</div>':"";document.getElementById("drawResult").innerHTML='<div><b>'+round+'. Oyun • Kura sonucu</b></div><div class="draw-tables">'+names+'</div>'+waitingHtml;}
     function renderLastDrawResult(){const last=drawStats.history[drawStats.history.length-1];if(!last){document.getElementById("drawResult").innerHTML="";return;}const tables=last.tables.map(t=>t.ids.map(id=>players.find(p=>p.id===id)).filter(Boolean));renderDrawResult(tables,last.waiting,last.round);}
     async function drawNextRound(){
       if(drawBusy)return;const chosen=selectedDrawPlayers();if(chosen.length<4){alert("Bir masa kurmak için en az 4 oyuncu seçmelisin.");return;}if(chosen.length>8){alert("Bir oyun için en fazla 8 oyuncu seçebilirsin.");return;}
       drawBusy=true;const button=document.getElementById("drawButton");button.disabled=true;const status=document.getElementById("drawStatus");status.textContent="Kura hazırlanıyor...";
       const pool=chosen.slice();let tables=pool.length===8?chooseBestTwoTables(pool):[chooseBestTable(pool)];if(!tables||tables.some(t=>!t)){status.textContent="Eşleşme oluşturulamadı.";button.disabled=false;drawBusy=false;return;}
-      const playedIds=new Set(tables.flat().map(p=>p.id));const waiting=pool.filter(p=>!playedIds.has(p.id)).map(p=>p.id);const fixedTables=tables.map(t=>t.slice());status.textContent="İsimler çekiliyor...";renderDrawResult(fixedTables,waiting,drawRoundNumber+1);
+      const playedIds=new Set(tables.flat().map(p=>p.id));const waiting=pool.filter(p=>!playedIds.has(p.id)).map(p=>p.id);const fixedTables=tables.map(t=>t.slice());status.textContent="İsimler çekiliyor...";renderDrawResult(fixedTables,waiting,drawRoundNumber+1,true);
       const seats=Array.from(document.querySelectorAll("#drawResult .draw-seat"));
       const revealOrder=[];
       const maxSeats=Math.max(...fixedTables.map(t=>t.length));
@@ -486,7 +486,7 @@
         const target=fixedTables[item.table][item.seatIndex].name||fixedTables[item.table][item.seatIndex].id;
         status.textContent=String.fromCharCode(65+item.table)+" masası • "+stoneNumbers[item.seatIndex]+" taşı çekiliyor...";
         item.seat.classList.add("reel");
-        const started=Date.now(),duration=7600;
+        const started=Date.now(),duration=3800;
         await new Promise(resolve=>{
           const timer=setInterval(()=>{
             const elapsed=Date.now()-started;
@@ -500,7 +500,7 @@
         });
         if(index<revealOrder.length-1){
           status.textContent=String.fromCharCode(65+item.table)+" masası • "+target+" yerleşti. Sıradaki isim hazırlanıyor...";
-          await new Promise(resolve=>setTimeout(resolve,3000));
+          await new Promise(resolve=>setTimeout(resolve,1500));
         }
       }
       updateDrawStats(fixedTables,chosen.map(p=>p.id),waiting);renderDrawResult(fixedTables,waiting,drawRoundNumber);renderDrawHistory();status.textContent=(drawMode==="test"?"Deneme":"Gerçek oyun")+" kurası tamamlandı. Sonraki oyun için katılımcıları yeniden seçebilirsin.";button.disabled=false;drawBusy=false;
