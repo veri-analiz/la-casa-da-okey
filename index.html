@@ -486,7 +486,7 @@
         const target=fixedTables[item.table][item.seatIndex].name||fixedTables[item.table][item.seatIndex].id;
         status.textContent=String.fromCharCode(65+item.table)+" masası • "+stoneNumbers[item.seatIndex]+" taşı çekiliyor...";
         item.seat.classList.add("reel");
-        const started=Date.now(),duration=2800;
+        const started=Date.now(),duration=2000;
         await new Promise(resolve=>{
           const timer=setInterval(()=>{
             const elapsed=Date.now()-started;
@@ -500,7 +500,7 @@
         });
         if(index<revealOrder.length-1){
           status.textContent=String.fromCharCode(65+item.table)+" masası • "+target+" yerleşti. Sıradaki isim hazırlanıyor...";
-          await new Promise(resolve=>setTimeout(resolve,1100));
+          await new Promise(resolve=>setTimeout(resolve,500));
         }
       }
       updateDrawStats(fixedTables,chosen.map(p=>p.id),waiting);renderDrawResult(fixedTables,waiting,drawRoundNumber);renderDrawHistory();status.textContent=(drawMode==="test"?"Deneme":"Gerçek oyun")+" kurası tamamlandı. Sonraki oyun için katılımcıları yeniden seçebilirsin.";button.disabled=false;drawBusy=false;
