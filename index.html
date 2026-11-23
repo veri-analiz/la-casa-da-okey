@@ -54,10 +54,10 @@
     .draw-table{background:#142238;border:1px solid #52627a;border-radius:12px;padding:13px}
     .draw-table h3{margin:0 0 12px;color:#e8bd61;font-size:16px;text-align:center;letter-spacing:1px}
     .draw-seats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
-    .draw-seat{background:#fff;color:#172033;border-radius:11px;padding:11px 8px;text-align:center;min-height:104px;box-shadow:inset 0 2px 4px #ffffff,0 4px 9px #0005;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
-    .draw-seat.reel{animation:reelFlash .16s linear infinite}
-    .draw-seat .stone-number{font-size:29px;line-height:1;font-weight:900}
-    .draw-seat .stone-name{font-size:13px;font-weight:bold;overflow-wrap:anywhere}
+    .draw-seat{background:#fff;color:#172033;border-radius:11px;padding:13px 8px;text-align:center;min-height:124px;box-shadow:inset 0 2px 4px #ffffff,0 4px 9px #0005;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+    .draw-seat.reel{animation:reelFlash .32s ease-in-out infinite;box-shadow:inset 0 0 0 2px #e8bd61,0 5px 14px #0007}
+    .draw-seat .stone-number{font-size:34px;line-height:1;font-weight:950}
+    .draw-seat .stone-name{font-size:clamp(19px,5vw,25px);line-height:1.12;font-weight:950;letter-spacing:.2px;overflow-wrap:anywhere;text-shadow:0 1px 0 #fff}
     .stone-dot{width:18px;height:18px;border-radius:50%;display:block;position:relative}
     .stone-dot:after{content:"";position:absolute;inset:-4px;border:1px solid currentColor;border-radius:50%;opacity:.7}
     .stone-red{background:#e53935;color:#e53935}
@@ -68,7 +68,7 @@
     .draw-note{color:#aab6c8;font-size:12px;line-height:1.5;margin-top:8px}
     .draw-history{margin-top:14px}
     .draw-history-item{padding:9px 0;border-bottom:1px solid #35445b;font-size:12px;color:#cbd5e1}
-    @keyframes reelFlash{0%{transform:translateY(-2px)}50%{transform:translateY(2px)}100%{transform:translateY(-2px)}}
+    @keyframes reelFlash{0%{transform:translateY(-3px)}50%{transform:translateY(3px)}100%{transform:translateY(-3px)}}
     @media(min-width:600px){.draw-tables{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
     @media(min-width:600px){.stats{grid-template-columns:repeat(4,1fr)}}
@@ -471,8 +471,39 @@
       drawBusy=true;const button=document.getElementById("drawButton");button.disabled=true;const status=document.getElementById("drawStatus");status.textContent="Kura hazırlanıyor...";
       const pool=chosen.slice();let tables=pool.length===8?chooseBestTwoTables(pool):[chooseBestTable(pool)];if(!tables||tables.some(t=>!t)){status.textContent="Eşleşme oluşturulamadı.";button.disabled=false;drawBusy=false;return;}
       const playedIds=new Set(tables.flat().map(p=>p.id));const waiting=pool.filter(p=>!playedIds.has(p.id)).map(p=>p.id);const fixedTables=tables.map(t=>t.slice());status.textContent="İsimler çekiliyor...";renderDrawResult(fixedTables,waiting,drawRoundNumber+1);
-      const seats=Array.from(document.querySelectorAll("#drawResult .draw-seat"));seats.forEach((seat,index)=>{const name=seat.querySelector(".stone-name"),target=name.textContent;seat.classList.add("reel");let tick=0;const timer=setInterval(()=>{const p=pool[Math.floor(Math.random()*pool.length)];name.textContent=p.name||p.id;tick++;if(tick>12+index){clearInterval(timer);name.textContent=target;seat.classList.remove("reel");}},65+index*8);});
-      await new Promise(resolve=>setTimeout(resolve,3700));updateDrawStats(fixedTables,chosen.map(p=>p.id),waiting);renderDrawResult(fixedTables,waiting,drawRoundNumber);renderDrawHistory();status.textContent=(drawMode==="test"?"Deneme":"Gerçek oyun")+" kurası tamamlandı. Sonraki oyun için katılımcıları yeniden seçebilirsin.";button.disabled=false;drawBusy=false;
+      const seats=Array.from(document.querySelectorAll("#drawResult .draw-seat"));
+      const revealOrder=[];
+      const maxSeats=Math.max(...fixedTables.map(t=>t.length));
+      for(let seatIndex=0;seatIndex<maxSeats;seatIndex++){
+        for(let tableIndex=0;tableIndex<fixedTables.length;tableIndex++){
+          const flatIndex=fixedTables.slice(0,tableIndex).reduce((n,t)=>n+t.length,0)+seatIndex;
+          if(seatIndex<fixedTables[tableIndex].length) revealOrder.push({seat:seats[flatIndex],table:tableIndex,seatIndex});
+        }
+      }
+      for(let index=0;index<revealOrder.length;index++){
+        const item=revealOrder[index];
+        const name=item.seat.querySelector(".stone-name");
+        const target=fixedTables[item.table][item.seatIndex].name||fixedTables[item.table][item.seatIndex].id;
+        status.textContent=String.fromCharCode(65+item.table)+" masası • "+stoneNumbers[item.seatIndex]+" taşı çekiliyor...";
+        item.seat.classList.add("reel");
+        const started=Date.now(),duration=7600;
+        await new Promise(resolve=>{
+          const timer=setInterval(()=>{
+            const elapsed=Date.now()-started;
+            const p=pool[Math.floor(Math.random()*pool.length)];
+            name.textContent=p.name||p.id;
+            if(elapsed>=duration){
+              clearInterval(timer);name.textContent=target;item.seat.classList.remove("reel");
+              item.seat.classList.add("revealed");resolve();
+            }
+          },140);
+        });
+        if(index<revealOrder.length-1){
+          status.textContent=String.fromCharCode(65+item.table)+" masası • "+target+" yerleşti. Sıradaki isim hazırlanıyor...";
+          await new Promise(resolve=>setTimeout(resolve,3000));
+        }
+      }
+      updateDrawStats(fixedTables,chosen.map(p=>p.id),waiting);renderDrawResult(fixedTables,waiting,drawRoundNumber);renderDrawHistory();status.textContent=(drawMode==="test"?"Deneme":"Gerçek oyun")+" kurası tamamlandı. Sonraki oyun için katılımcıları yeniden seçebilirsin.";button.disabled=false;drawBusy=false;
     }
     async function sharePage(){
       const url = location.href;
