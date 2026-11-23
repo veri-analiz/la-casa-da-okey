@@ -609,7 +609,7 @@
             name.textContent=target;
             seat.classList.remove("reel");
           }
-        },90+index*35);
+        },65+index*8);
       });
       await new Promise(resolve=>setTimeout(resolve,3700));
       updateDrawStats(fixedTables,chosen.map(p=>p.id),waiting);
