@@ -516,7 +516,7 @@
         if(!first.some(p=>p.id===pool[0].id)) return;
         permutations(first).forEach(a=>{
           permutations(rest).forEach(b=>{
-            const cost=lineupCost(a)+lineupCost(b);
+            let cost=lineupCost(a)+lineupCost(b);
             const crossA=new Set(a.map(p=>p.id));
             const crossB=new Set(b.map(p=>p.id));
             // Masalar arasında aynı oyuncuların tekrar tekrar birlikte kalmasını azalt.
