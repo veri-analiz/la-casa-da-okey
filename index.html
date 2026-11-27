@@ -31,9 +31,6 @@
     .player-input input{margin:0;padding:9px}
     .player-input label{display:flex;gap:7px;align-items:center}
     .muted{color:#aab6c8;font-size:12px}
-    .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
-    .stat{background:#263750;padding:12px;border-radius:9px;text-align:center}
-    .stat strong{display:block;font-size:19px;color:#e8bd61;margin-top:5px}
     .actions{display:flex;gap:8px;flex-wrap:wrap}
     #adminPanel{display:none}
     #cancelEditButton{display:none}
@@ -85,7 +82,6 @@
     @keyframes reelFlash{0%{transform:translateY(-3px)}50%{transform:translateY(3px)}100%{transform:translateY(-3px)}}
     @media(min-width:600px){.draw-tables{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
-    @media(min-width:600px){.stats{grid-template-columns:repeat(4,1fr)}}
   </style>
 </head>
 <body>
@@ -103,11 +99,6 @@
           <tbody id="ranking"><tr><td colspan="5">Veriler yükleniyor...</td></tr></tbody>
         </table>
       </div>
-    </section>
-
-    <section class="card">
-      <h2>📊 Genel İstatistikler</h2>
-      <div id="statistics" class="stats"></div>
     </section>
 
 
@@ -341,14 +332,7 @@
         return `<tr><td>${medal} ${p.name}</td><td>${p.wins}</td><td>${p.stars}</td><td>%${rate}</td><td>${money(p.payment)}</td></tr>`;
       }).join("");
 
-      const totalWins = ordered.reduce((s,p)=>s+p.wins,0);
-      const totalPayments = ordered.reduce((s,p)=>s+p.payment,0);
       const completedWeeks = weeks.filter(w=>w.savedAt||Object.values(w.results||{}).some(r=>Number(r.games)>0||Number(r.stars)>0));
-      document.getElementById("statistics").innerHTML = `
-        <div class="stat">Toplam Hafta<strong>${completedWeeks.length}</strong></div>
-        <div class="stat">Oyuncu Sayısı<strong>${players.length}</strong></div>
-        <div class="stat">Toplam Galibiyet<strong>${totalWins}</strong></div>
-        <div class="stat">Toplam Ödeme<strong>${money(totalPayments)}</strong></div>`;
 
       document.getElementById("history").innerHTML = completedWeeks.slice().reverse().map(w=>{
         const rows = Object.entries(w.results||{}).map(([id,r])=>{
