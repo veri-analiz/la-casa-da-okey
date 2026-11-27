@@ -39,6 +39,19 @@
     #cancelEditButton{display:none}
     details{border-bottom:1px solid #35445b;padding:10px 0}
     summary{cursor:pointer;font-weight:bold;color:#f1f5f9}
+    #rulesPanel{border-color:#8c713d;background:linear-gradient(145deg,#1b293e,#19263a)}
+    #rulesPanel h2{font-size:20px;margin-bottom:6px}
+    .rules-intro{color:#aab6c8;font-size:12px;line-height:1.6;margin-bottom:14px}
+    .rule-item{background:#22334b;border:1px solid #3a4d68;border-radius:10px;margin:9px 0;padding:0;overflow:hidden}
+    .rule-item summary{list-style:none;display:flex;align-items:center;gap:10px;padding:14px 15px;font-size:14px;line-height:1.45;font-weight:700}
+    .rule-item summary::-webkit-details-marker{display:none}
+    .rule-item summary::after{content:"＋";margin-left:auto;color:#e8bd61;font-size:19px;font-weight:400}
+    .rule-item[open] summary{color:#f4d58d;border-bottom:1px solid #3a4d68}
+    .rule-item[open] summary::after{content:"−"}
+    .rule-content{padding:12px 15px 14px;color:#d5deea;font-size:13px;line-height:1.7}
+    .rule-content p{margin:0 0 8px}
+    .rule-content p:last-child{margin-bottom:0}
+    .rule-content strong{color:#f4d58d;font-weight:700}
 
     /* Oyun gecesi eşleştirme modülü */
     .draw-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
@@ -118,6 +131,69 @@
     <section class="card">
       <h2>📅 Haftalık Geçmiş</h2>
       <div id="history">Yükleniyor...</div>
+    </section>
+
+    <section class="card" id="rulesPanel">
+      <h2>📜 Okey Ligi • Oyun Kuralları</h2>
+      <div class="rules-intro">Oyun sırasında uygulanacak kurallar ve puanlama esasları. Ayrıntıları görüntülemek için ilgili başlığa dokun.</div>
+
+      <details class="rule-item">
+        <summary>🏆 Birinciliği Garanti Eden Oyuncu</summary>
+        <div class="rule-content">
+          <p>Birinciliği matematiksel olarak garanti altına alan oyuncu, son elde <strong>etkisiz eleman</strong> olarak kabul edilir.</p>
+          <p>Istakasını kapalı oynar. Okey taşı gelirse okey taşını atamaz.</p>
+          <p>Son oyunda hiçbir şekilde <strong>puan hesaplamasına dâhil edilmez.</strong></p>
+        </div>
+      </details>
+
+      <details class="rule-item">
+        <summary>⚠️ Yanlış El Açılımı</summary>
+        <div class="rule-content">
+          <p>Yanlış el açılımı yapan oyuncuya, toplama eli de dâhil olmak üzere <strong>sabit 200 puan ceza</strong> uygulanır.</p>
+          <p>Son elde yanlış açılım yapan oyuncuya, puan tablosundan bağımsız olarak ayrıca <strong>1 ekstra yıldız</strong> verilir.</p>
+          <p>Ekstra yıldız, oyuncunun haftalık yıldız toplamına eklenir.</p>
+        </div>
+      </details>
+
+      <details class="rule-item">
+        <summary>🀄 Çiftten Bitiş</summary>
+        <div class="rule-content">
+          <p>Çiftten bitiş yapabilmek için <strong>7 çift</strong> tamamlanmalıdır. Perli taşlar çift olarak kabul edilmez.</p>
+          <p>Çiftten biten oyuncunun çiftleri dışında kalan taşlarının sayı toplamı <strong>2 ile çarpılır.</strong></p>
+          <p>Örnek: Oyuncunun 3 çifti varsa, çiftler dışında kalan taşlarının sayı toplamı 2 katı üzerinden hesaplanır.</p>
+        </div>
+      </details>
+
+      <details class="rule-item">
+        <summary>🀄🀄 7 Çift ile Normal Bitiş 🀄🀄</summary>
+        <div class="rule-content">
+          <p><strong>Kazanan oyuncudan düşülecek puan:</strong> Sarı 4 kat, Mavi 6 kat.</p>
+          <p><strong>Elde kalan taşların hesaplanmasında uygulanacak çarpan:</strong> Sarı 4 kat, Mavi 6 kat.</p>
+        </div>
+      </details>
+
+      <details class="rule-item">
+        <summary>🎯 7 Çift ile Okey Atarak Bitiş</summary>
+        <div class="rule-content">
+          <p><strong>Kazanan oyuncudan düşülecek puan:</strong> Sarı 2 × 2 × 10 = 400 puan; Mavi 3 × 2 × 10 = 600 puan.</p>
+          <p><strong>Elde kalan taşların hesaplanmasında uygulanacak çarpan:</strong> Sarı 2 × 2 × 2 = 8 kat; Mavi 3 × 2 × 2 = 12 kat.</p>
+        </div>
+      </details>
+
+      <details class="rule-item">
+        <summary>🚫 Yanlışlıkla Okey Atılması</summary>
+        <div class="rule-content">
+          <p>Bir oyuncu yanlışlıkla okey taşını atar ve bu durum başka bir oyuncu tarafından fark edilirse, okeyi atan oyuncuya ceza uygulanır: <strong>Sarı 20 puan, Mavi 30 puan.</strong></p>
+          <p>Atılan okey taşını alan oyuncu, bu taşı okey olarak kullanamaz.</p>
+        </div>
+      </details>
+
+      <details class="rule-item">
+        <summary>❗ Oyuncu Kaynaklı Hatalar</summary>
+        <div class="rule-content">
+          <p>Oyuncunun kendi hatasından kaynaklanan durumlarda (elinde eksik veya fazla taş bulundurmak gibi) ilgili oyuncuya <strong>sabit 200 puan ceza</strong> uygulanır.</p>
+        </div>
+      </details>
     </section>
 
     <section class="card">
